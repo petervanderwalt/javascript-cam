@@ -1,0 +1,80 @@
+/* Solar Yellow theme — matches webserial-grblhal/themes/solar-yellow.css */
+[data-theme="solar-yellow"] {
+    --color-primary-light: #FFF2AE;
+    --color-primary: #FFD949;
+    --color-primary-dark: #D7B232;
+
+    --color-secondary-light: #B0B0AF;
+    --color-secondary: #6A6B6A;
+    --color-secondary-dark: #383838;
+
+    --color-grey-light: #CBD5E1;
+    --color-grey: #6B6B6B;
+    --color-grey-dark: #2F373C;
+
+    --color-bg: #EDF2F7;
+    --color-surface: #FFFFFF;
+    --color-surface-2: #f8fafc;
+    --color-border: #CBD5E1;
+
+    --color-text: #1C2124;
+    --color-text-muted: #4A5568;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="solar-yellow"] .cam-viewport {
+    background: #E2E8F0;
+}
+
+[data-theme="solar-yellow"] .viewport-status {
+    background: rgba(255, 255, 255, 0.85);
+    color: #1C2124;
+    border: 1px solid #CBD5E1;
+    backdrop-filter: blur(4px);
+    box-shadow: var(--shadow-sm);
+}
+
+[data-theme="solar-yellow"] .drop-zone {
+    background: #F8FAFC;
+    color: #4A5568;
+    border-color: #CBD5E1;
+}
+
+[data-theme="solar-yellow"] .drop-zone:hover {
+    background: rgba(255, 217, 73, 0.08);
+    border-color: var(--color-primary-dark);
+    color: #1C2124;
+}
+
+[data-theme="solar-yellow"] .btn-primary {
+    color: #1C2124;
+}
+
+[data-theme="solar-yellow"] .btn-action {
+    background: #2F373C;
+    color: #ffffff;
+    border-color: #2F373C;
+    box-shadow: 0 0 8px rgba(47, 55, 60, 0.5);
+}
+
+[data-theme="solar-yellow"] .btn-action:hover {
+    background: #1C2124;
+    border-color: #1C2124;
+    box-shadow: 0 4px 12px rgba(47, 55, 60, 0.6);
+}
+
+[data-theme="solar-yellow"] .card-header .card-icon {
+    color: var(--color-primary-dark);
+}
+
+[data-theme="solar-yellow"] .tp-item.active {
+    background: rgba(255, 217, 73, 0.15);
+}
+
+[data-theme="solar-yellow"] .form-control:focus {
+    border-color: var(--color-primary-dark);
+    box-shadow: 0 0 0 2px rgba(255, 217, 73, 0.3);
+}

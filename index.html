@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web CAM</title>
+    <meta name="description" content="Web CAM — Vector to G-Code toolpath generator">
+
+    <!-- Bootstrap Icons (same as webserial-grblhal) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- CAM New styles -->
+    <link rel="stylesheet" href="css/cam-new/base.css">
+    <link rel="stylesheet" href="css/cam-new/theme-ooznest.css">
+    <link rel="stylesheet" href="css/cam-new/theme-solar-yellow.css">
+
+    <!-- Three.js (reuse existing) -->
+    <script src="lib/threejs/three.min.js"></script>
+    <script src="lib/threejs/OrbitControls.js"></script>
+
+    <!-- DXF parsers -->
+    <script src="lib/dxf/dxf-parser.js"></script>
+    <script src="lib/dxf/three-dxf.js"></script>
+
+    <!-- SVG parser -->
+    <script src="lib/lw.svg-parser/dist/lw.svg-parser.js"></script>
+
+    <!-- UI modules -->
+    <script src="js/cam-new/viewcube.js"></script>
+</head>
+
+<body>
+
+    <div class="app-shell">
+
+        <!-- ══════════════════════════════════════════════════════
+         HEADER
+    ═══════════════════════════════════════════════════════ -->
+        <header class="app-header">
+            <div class="brand">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                </svg>
+                Web CAM
+            </div>
+
+            <div class="header-sep"></div>
+
+            <!-- File actions -->
+            <button class="btn btn-ghost btn-sm" id="btn-new-job" title="Start a fresh workspace">
+                <i class="bi bi-file-earmark-plus"></i> New Job
+            </button>
+            <button class="btn btn-ghost btn-sm" id="btn-open-file" title="Open SVG / DXF file">
+                <i class="bi bi-folder2-open"></i> Open File
+            </button>
+            <input type="file" id="file-input" accept=".svg,.dxf" style="display:none">
+
+            <div class="header-sep"></div>
+
+            <!-- Units toggle -->
+            <label
+                style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-muted);cursor:pointer;">
+                <input type="checkbox" id="unit-toggle" checked style="cursor:pointer;">
+                mm
+            </label>
+
+            <!-- Header actions -->
+            <div class="header-actions">
+
+                <!-- Theme switcher — same as webserial-grblhal -->
+                <div class="theme-switcher" title="Switch theme">
+                    <button class="theme-btn active" data-theme="dark" title="Dark"></button>
+                    <button class="theme-btn" data-theme="ooznest" title="Ooznest"></button>
+                    <button class="theme-btn" data-theme="solar-yellow" title="Solar Yellow"></button>
+                </div>
+
+                <div class="header-sep"></div>
+
+                <button class="btn btn-ghost btn-sm" id="btn-generate"
+                    title="Generate G-Code from all enabled toolpaths" disabled>
+                    <i class="bi bi-cpu"></i> Generate G-Code
+                </button>
+
+                <button class="btn btn-primary btn-sm" id="btn-save-gcode" title="Save G-Code file" disabled>
+                    <i class="bi bi-download"></i> Save .nc
+                </button>
+            </div>
+        </header>
+
+        <!-- ══════════════════════════════════════════════════════
+         BODY  (sidebar + viewport)
+    ═══════════════════════════════════════════════════════ -->
+        <div class="app-body">
+
+            <!-- ── SIDEBAR ──────────────────────────────────── -->
+            <aside class="cam-sidebar">
+                <div class="sidebar-scroll">
+
+                    <!-- ① File / Drop zone -->
+                    <div class="card" id="card-file">
+                        <div class="card-header" data-collapse="card-file">
+                            <i class="bi bi-file-earmark-code card-icon"></i>
+                            <span>File</span>
+                            <i class="bi bi-chevron-down card-chevron"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="drop-zone" id="drop-zone">
+                                <div class="drop-icon"><i class="bi bi-cloud-upload"></i></div>
+                                <p>Drop SVG or DXF here</p>
+                                <small>or click to browse</small>
+                            </div>
+                            <div id="file-info"
+                                style="margin-top:8px;font-size:11px;color:var(--color-text-muted);display:none;">
+                                <i class="bi bi-file-check"></i> <span id="file-name"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ② Job setup -->
+                    <div class="card" id="card-job">
+                        <div class="card-header" data-collapse="card-job">
+                            <i class="bi bi-bounding-box card-icon"></i>
+                            <span>Job Setup</span>
+                            <i class="bi bi-chevron-down card-chevron"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-row">
+                                <label class="form-label">Stock X</label>
+                                <input class="form-control" type="number" id="job-x" value="200" min="1">
+                                <span class="form-unit">mm</span>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label">Stock Y</label>
+                                <input class="form-control" type="number" id="job-y" value="200" min="1">
+                                <span class="form-unit">mm</span>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label">Material Z</label>
+                                <input class="form-control" type="number" id="job-z" value="18" min="0.1" step="0.5">
+                                <span class="form-unit">mm</span>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label">Safe Z</label>
+                                <input class="form-control" type="number" id="job-safez" value="5" min="0.1" step="0.5">
+                                <span class="form-unit">mm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- View Options -->
+                    <div class="card" id="card-view">
+                        <div class="card-header" data-collapse="card-view">
+                            <i class="bi bi-eye card-icon"></i>
+                            <span>View</span>
+                            <i class="bi bi-chevron-down card-chevron"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-row">
+                                <label class="form-label" style="flex:1;">Original Vectors</label>
+                                <input type="checkbox" id="view-vectors" checked style="cursor:pointer;">
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label" style="flex:1;">Toolpath Preview</label>
+                                <input type="checkbox" id="view-toolpaths" checked style="cursor:pointer;">
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label" style="flex:1;">G-Code Path</label>
+                                <input type="checkbox" id="view-gcode" checked style="cursor:pointer;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ③ Toolpaths list -->
+                    <div class="card" id="card-toolpaths">
+                        <div class="card-header" data-collapse="card-toolpaths">
+                            <i class="bi bi-layers card-icon"></i>
+                            <span>Toolpaths</span>
+                            <span class="badge badge-primary" id="tp-count" style="margin-left:4px;">0</span>
+                            <i class="bi bi-chevron-down card-chevron"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="tp-list" id="tp-list">
+                                <div
+                                    style="text-align:center;padding:20px;color:var(--color-text-muted);font-size:11px;">
+                                    <i class="bi bi-cursor" style="font-size:20px;display:block;margin-bottom:6px;"></i>
+                                    Click vectors in the viewport<br>to create toolpaths
+                                </div>
+                            </div>
+                            <div style="margin-top:8px;">
+                                <button class="btn btn-ghost btn-sm btn-full" id="btn-add-tp" disabled>
+                                    <i class="bi bi-plus-circle"></i> Create Toolpath from Selection
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ④ Toolpath settings (shown when one selected) -->
+                    <div class="card" id="card-tp-settings" style="display:none;">
+                        <div class="card-header" data-collapse="card-tp-settings">
+                            <i class="bi bi-sliders card-icon"></i>
+                            <span id="tp-settings-name">Toolpath Settings</span>
+                            <i class="bi bi-chevron-down card-chevron"></i>
+                        </div>
+                        <div class="card-body">
+                            <button class="btn btn-ghost btn-sm btn-full" id="btn-add-to-tp" style="margin-bottom:12px;"
+                                disabled>
+                                <i class="bi bi-plus-circle-dotted"></i> Add Selection to this Toolpath
+                            </button>
+
+                            <!-- Operation -->
+                            <div class="form-row">
+                                <label class="form-label">Operation</label>
+                                <select class="form-control" id="tp-operation">
+                                    <option value="Outside">Outside (Climb)</option>
+                                    <option value="Inside">Inside (Conventional)</option>
+                                    <option value="Pocket">Pocket</option>
+                                    <option value="Engrave">Engrave</option>
+                                    <option value="Drill">Drill</option>
+                                    <option value="Fill">Fill</option>
+                                </select>
+                            </div>
+
+                            <div class="divider"></div>
+
+                            <!-- Tool -->
+                            <div class="form-row">
+                                <label class="form-label">Tool Dia.</label>
+                                <input class="form-control" type="number" id="tp-tooldia" value="3.175" min="0.1"
+                                    step="0.1">
+                                <span class="form-unit">mm</span>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label">Pass Depth</label>
+                                <input class="form-control" type="number" id="tp-passdepth" value="3" min="0.1"
+                                    step="0.1">
+                                <span class="form-unit">mm</span>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label">Cut Depth</label>
+                                <input class="form-control" type="number" id="tp-depth" value="18" min="0.1" step="0.1">
+                                <span class="form-unit">mm</span>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label">Stepover</label>
+                                <input class="form-control" type="number" id="tp-stepover" value="40" min="1" max="100">
+                                <span class="form-unit">%</span>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label">Offset</label>
+                                <input class="form-control" type="number" id="tp-offset" value="0" step="0.1">
+                                <span class="form-unit">mm</span>
+                            </div>
+
+                            <div class="divider"></div>
+
+                            <!-- Feeds -->
+                            <div class="form-row">
+                                <label class="form-label">Feed Rate</label>
+                                <input class="form-control" type="number" id="tp-feed" value="800" min="1">
+                                <span class="form-unit">mm/m</span>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label">Plunge Rate</label>
+                                <input class="form-control" type="number" id="tp-plunge" value="400" min="1">
+                                <span class="form-unit">mm/m</span>
+                            </div>
+                            <div class="form-row">
+                                <label class="form-label">Spindle</label>
+                                <input class="form-control" type="number" id="tp-spindle" value="18000" min="0">
+                                <span class="form-unit">rpm</span>
+                            </div>
+
+                            <!-- Tabs section -->
+                            <div class="divider"></div>
+                            <div class="form-row">
+                                <label class="form-label">Tabs</label>
+                                <input type="checkbox" id="tp-tabs-enabled">
+                            </div>
+                            <div id="tp-tabs-fields" style="display:none;">
+                                <div class="form-row">
+                                    <label class="form-label">Tab Width</label>
+                                    <input class="form-control" type="number" id="tp-tab-width" value="6" min="1">
+                                    <span class="form-unit">mm</span>
+                                </div>
+                                <div class="form-row">
+                                    <label class="form-label">Tab Height</label>
+                                    <input class="form-control" type="number" id="tp-tab-depth" value="3" min="0.1"
+                                        step="0.1">
+                                    <span class="form-unit">mm</span>
+                                </div>
+                                <button class="btn btn-ghost btn-sm btn-full" id="btn-place-tabs"
+                                    style="margin-top:4px;">
+                                    <i class="bi bi-geo-alt"></i> Place Tabs on Viewport
+                                </button>
+                                <button class="btn btn-ghost btn-sm btn-full" id="btn-clear-tabs"
+                                    style="margin-top:4px;color:var(--color-secondary);">
+                                    <i class="bi bi-trash"></i> Clear All Tabs
+                                </button>
+                            </div>
+
+                            <div style="margin-top:10px;display:flex;gap:6px;">
+                                <button class="btn btn-primary btn-sm" id="btn-preview-tp" style="flex:1;">
+                                    <i class="bi bi-eye"></i> Preview
+                                </button>
+                                <button class="btn btn-ghost btn-sm" id="btn-delete-tp">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <div class="progress" id="tp-progress-container"
+                                style="display:none;margin-top:8px;height:4px;">
+                                <div class="progress-bar" id="tp-worker-progress"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ⑤ G-Code output -->
+                    <div class="card" id="card-gcode" style="display:none;">
+                        <div class="card-header" data-collapse="card-gcode">
+                            <i class="bi bi-terminal card-icon"></i>
+                            <span>G-Code</span>
+                            <i class="bi bi-chevron-down card-chevron"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="progress" style="margin-bottom:6px;">
+                                <div class="progress-bar" id="gcode-progress"></div>
+                            </div>
+                            <textarea id="gcode-output" readonly style="width:100%;height:140px;resize:vertical;
+                                   background:var(--color-bg);border:1px solid var(--color-border);
+                                   border-radius:var(--radius-sm);color:var(--color-text);
+                                   font-family:monospace;font-size:10px;padding:6px;outline:none;">
+                        </textarea>
+                            <div style="display:flex;gap:6px;margin-top:6px;">
+                                <button class="btn btn-primary btn-sm" id="btn-save-nc" style="flex:1;" disabled>
+                                    <i class="bi bi-download"></i> Save .nc
+                                </button>
+                                <button class="btn btn-ghost btn-sm" id="btn-copy-gcode">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- /sidebar-scroll -->
+
+                <!-- Sidebar footer -->
+                <div class="sidebar-footer">
+                    <button class="btn btn-ghost btn-sm btn-full" id="btn-reset-view">
+                        <i class="bi bi-arrows-fullscreen"></i> Reset View
+                    </button>
+                </div>
+
+            </aside><!-- /cam-sidebar -->
+
+            <!-- ── VIEWPORT ─────────────────────────────────── -->
+            <div class="cam-viewport" id="viewport">
+                <div class="viewport-toolbar">
+                    <button class="btn btn-ghost btn-icon" id="btn-view-reset" title="Reset view">
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
+                    <button class="btn btn-ghost btn-icon" id="btn-view-ortho"
+                        title="Toggle Orthographic / Perspective">
+                        <i class="bi bi-box-fill" id="icon-cam-type"></i>
+                    </button>
+                </div>
+                <div class="viewport-status" id="viewport-status">
+                    Loading 3D view…
+                </div>
+            </div>
+
+        </div><!-- /app-body -->
+    </div><!-- /app-shell -->
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ════════════════════════════════════════════════════════
+     SCRIPTS  (order matters — no bundler yet)
+═══════════════════════════════════════════════════════ -->
+
+    <!-- Existing parsers (reuse from original CAM) -->
+    <script src="js/svgparser.js"></script>
+    <script src="js/dxf-render.js"></script>
+    <script src="js/helpers.js"></script>
+    <script src="js/advanced-cam-geometryutils.js"></script>
+
+    <!-- New app modules -->
+    <script src="js/cam-new/toast.js"></script>
+    <script src="js/cam-new/theme.js"></script>
+    <script src="js/cam-new/viewer3d.js"></script>
+    <script src="js/cam-new/file-loader.js"></script>
+    <script src="js/cam-new/toolpath-manager.js"></script>
+    <script src="js/cam-new/workspace.js"></script>
+    <script src="js/cam-new/tabs.js"></script>
+    <script src="js/cam-new/sidebar.js"></script>
+    <script src="js/cam-new/app.js"></script>
+
+</body>
+
+</html>

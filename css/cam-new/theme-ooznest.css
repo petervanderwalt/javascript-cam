@@ -1,0 +1,50 @@
+/* Ooznest light theme — matches webserial-grblhal/themes/ooznest.css */
+[data-theme="ooznest"] {
+    --color-primary-light: #529A9F;
+    --color-primary: #30797F;
+    --color-primary-dark: #245d61;
+
+    --color-secondary-light: #FB903A;
+    --color-secondary: #F76406;
+    --color-secondary-dark: #e67618;
+
+    --color-grey-light: #e2e8f0;
+    --color-grey: #64748b;
+    --color-grey-dark: #1e293b;
+
+    --color-bg: #f3f5f6;
+    --color-surface: #ffffff;
+    --color-surface-2: #f8fafc;
+    --color-border: #e2e8f0;
+
+    --color-text: #0F172A;
+    --color-text-muted: #475569;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="ooznest"] .cam-viewport {
+    background: #E2E8F0;
+}
+
+[data-theme="ooznest"] .viewport-status {
+    background: rgba(255, 255, 255, 0.9);
+    color: #0F172A;
+    border: 1px solid #CBD5E1;
+    backdrop-filter: blur(4px);
+    box-shadow: var(--shadow-sm);
+}
+
+[data-theme="ooznest"] .drop-zone {
+    background: #FFFFFF;
+    color: #475569;
+    border-color: #E2E8F0;
+}
+
+[data-theme="ooznest"] .drop-zone:hover {
+    background: rgba(48, 121, 127, 0.05);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
